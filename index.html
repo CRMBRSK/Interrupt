@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interrupt - Break the Pattern</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+            background: #000;
+            color: #fff;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            margin-bottom: 60px;
+            opacity: 0;
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 200;
+            letter-spacing: -0.02em;
+            margin-bottom: 10px;
+        }
+
+        .header .status {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .time-display {
+            font-family: 'SF Mono', 'Monaco', monospace;
+            color: #444;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .interrupt-panel {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            opacity: 0;
+            animation: fadeIn 0.8s ease 0.2s forwards;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .interrupt-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #333, transparent);
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            to { left: 100%; }
+        }
+
+        .current-interrupt {
+            font-size: 1.3rem;
+            line-height: 1.7;
+            margin-bottom: 25px;
+            color: #e0e0e0;
+        }
+
+        .interrupt-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .interrupt-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #999;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .btn:hover {
+            border-color: #666;
+            color: #fff;
+            background: #111;
+        }
+
+        .btn.primary {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s;
+            cursor: pointer;
+            opacity: 0;
+            animation: fadeIn 0.8s ease forwards;
+        }
+
+        .card:nth-child(1) { animation-delay: 0.3s; }
+        .card:nth-child(2) { animation-delay: 0.4s; }
+        .card:nth-child(3) { animation-delay: 0.5s; }
+        .card:nth-child(4) { animation-delay: 0.6s; }
+
+        .card:hover {
+            border-color: #333;
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            color: #fff;
+        }
+
+        .card-badge {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            background: #111;
+            border-radius: 4px;
+            color: #666;
+        }
+
+        .card-content {
+            color: #999;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .card-action {
+            margin-top: 15px;
+            color: #fff;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .location-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .location-list li {
+            padding: 12px;
+            background: #050505;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .location-list li:hover {
+            background: #0f0f0f;
+            transform: translateX(5px);
+        }
+
+        .location-name {
+            font-weight: 500;
+        }
+
+        .location-detail {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .timer {
+            font-size: 3rem;
+            font-weight: 200;
+            text-align: center;
+            margin: 30px 0;
+            font-family: 'SF Mono', monospace;
+            letter-spacing: 0.1em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            background: #000;
+            border: 1px solid #333;
+            padding: 10px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 350px;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            z-index: 999;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .notification-body {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .weekend-detail {
+            background: #050505;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .weekend-detail h3 {
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .weekend-detail p {
+            color: #999;
+            margin-bottom: 15px;
+        }
+
+        .weekend-detail ul {
+            list-style: none;
+        }
+
+        .weekend-detail li {
+            padding: 8px 0;
+            color: #ccc;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .activity-log {
+            background: #050505;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 8px;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            font-family: 'SF Mono', monospace;
+            color: #444;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Interrupt</h1>
+            <div class="status">
+                <span id="currentTime" class="time-display"></span> • 
+                <span id="city">Washington, DC</span> • 
+                <span id="routineStatus">Pattern detected</span>
+            </div>
+        </div>
+
+        <div class="interrupt-panel">
+            <div class="current-interrupt" id="currentInterrupt">
+                Loading your intervention...
+            </div>
+            <div class="interrupt-meta">
+                <span>⚡ Energy required: <span id="energyLevel">Low</span></span>
+                <span>⏱ Time: <span id="timeRequired">2 min</span></span>
+                <span>📍 Location: <span id="locationRequired">Anywhere</span></span>
+            </div>
+            <div class="actions">
+                <button class="btn primary" onclick="app.completeInterrupt()">Done</button>
+                <button class="btn" onclick="app.skipWithReason()">Can't do this</button>
+                <button class="btn" onclick="app.generateNewInterrupt()">Different one</button>
+                <button class="btn" onclick="app.snoozeInterrupt()">In 30 min</button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card" onclick="app.openExploration()">
+                <div class="card-header">
+                    <div class="card-title">City Exploration</div>
+                    <div class="card-badge" id="explorationTime">15 min</div>
+                </div>
+                <div class="card-content" id="explorationContent">
+                    Find the nearest place you've walked past 100 times but never entered. Go inside. Buy something small.
+                </div>
+                <div class="card-action">Explore →</div>
+            </div>
+
+            <div class="card" onclick="app.openWeekendEscape()">
+                <div class="card-header">
+                    <div class="card-title">Weekend Escape</div>
+                    <div class="card-badge">2-3 days</div>
+                </div>
+                <div class="card-content" id="weekendContent">
+                    Loading destination...
+                </div>
+                <div class="card-action">View details →</div>
+            </div>
+
+            <div class="card" onclick="app.openCreativePrompt()">
+                <div class="card-header">
+                    <div class="card-title">Creative Task</div>
+                    <div class="card-badge" id="creativeTime">Now</div>
+                </div>
+                <div class="card-content" id="creativeContent">
+                    Loading prompt...
+                </div>
+                <div class="card-action">Start creating →</div>
+            </div>
+
+            <div class="card" onclick="app.openConnection()">
+                <div class="card-header">
+                    <div class="card-title">Human Connection</div>
+                    <div class="card-badge">Quick</div>
+                </div>
+                <div class="card-content" id="connectionContent">
+                    Loading suggestion...
+                </div>
+                <div class="card-action">Connect →</div>
+            </div>
+        </div>
+
+        <div class="activity-log" id="activityLog">
+            <div class="log-entry">
+                <span class="log-time">--:--</span>
+                System initialized. Breaking patterns.
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="explorationModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="app.closeModal('explorationModal')">×</button>
+            <h2>Urban Exploration Mission</h2>
+            <div id="explorationDetails"></div>
+            <ul class="location-list" id="nearbyPlaces"></ul>
+            <button class="btn primary" onclick="app.startExploration()">Start Mission</button>
+        </div>
+    </div>
+
+    <div class="modal" id="weekendModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="app.closeModal('weekendModal')">×</button>
+            <h2>Weekend Escape Plan</h2>
+            <div id="weekendDetails"></div>
+            <button class="btn primary" onclick="app.bookWeekend()">Make It Happen</button>
+            <button class="btn" onclick="app.generateNewDestination()">Different Destination</button>
+        </div>
+    </div>
+
+    <div class="modal" id="creativeModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="app.closeModal('creativeModal')">×</button>
+            <h2>Creative Challenge</h2>
+            <div id="creativeDetails"></div>
+            <div class="timer" id="creativeTimer">--:--</div>
+            <button class="btn primary" onclick="app.startCreativeTimer()">Start Timer</button>
+            <button class="btn" onclick="app.skipCreative()">Different Challenge</button>
+        </div>
+    </div>
+
+    <div class="modal" id="connectionModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="app.closeModal('connectionModal')">×</button>
+            <h2>Connection Challenge</h2>
+            <div id="connectionDetails"></div>
+            <button class="btn primary" onclick="app.completeConnection()">I Did It</button>
+            <button class="btn" onclick="app.generateNewConnection()">Different Suggestion</button>
+        </div>
+    </div>
+
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="app.closeModal('settingsModal')">×</button>
+            <h2>Calibration</h2>
+            <div class="input-group">
+                <label>Your city</label>
+                <input type="text" id="userCity" value="Washington, DC">
+            </div>
+            <div class="input-group">
+                <label>Energy level right now</label>
+                <select id="currentEnergy">
+                    <option value="dead">Completely dead</option>
+                    <option value="low">Low energy</option>
+                    <option value="medium" selected>Normal</option>
+                    <option value="high">Feeling good</option>
+                    <option value="manic">Wired</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Interruption frequency</label>
+                <select id="frequency">
+                    <option value="30">Every 30 minutes</option>
+                    <option value="60" selected>Every hour</option>
+                    <option value="120">Every 2 hours</option>
+                    <option value="240">Every 4 hours</option>
+                    <option value="0">Manual only</option>
+                </select>
+            </div>
+            <button class="btn primary" onclick="app.saveSettings()">Save</button>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <div class="notification-title" id="notificationTitle"></div>
+        <div class="notification-body" id="notificationBody"></div>
+    </div>
+
+    <script>
+        const app = {
+            data: {
+                interrupts: {
+                    immediate: [
+                        { text: "Stand up. Walk to the nearest window. Count something outside you've never counted before.", energy: "low", time: "2 min", location: "anywhere" },
+                        { text: "Text the 7th person in your recent messages. Just say 'thinking of you' or share something that reminded you of them.", energy: "low", time: "1 min", location: "anywhere" },
+                        { text: "Find the song you played most 5 years ago. Play it right now at full volume.", energy: "medium", time: "3 min", location: "anywhere" },
+                        { text: "Write down 10 things you want to do before you die. Pick the easiest one. Do something about it right now.", energy: "medium", time: "5 min", location: "anywhere" },
+                        { text: "Call someone instead of texting them. No agenda. Just to hear their voice.", energy: "medium", time: "10 min", location: "anywhere" },
+                        { text: "Go outside. Walk in a direction you never walk. Turn at the third intersection. Find something interesting.", energy: "medium", time: "20 min", location: "outside" },
+                        { text: "Order food from a place you've never tried. Choose blindly from the menu.", energy: "low", time: "2 min", location: "anywhere" },
+                        { text: "Find a YouTube video about something you know nothing about. Watch the whole thing.", energy: "low", time: "15 min", location: "anywhere" },
+                        { text: "Message someone who intimidates you. Ask them one specific question.", energy: "high", time: "5 min", location: "anywhere" },
+                        { text: "Book something for this week. A ticket, a reservation, a class. Commit now, figure it out later.", energy: "medium", time: "5 min", location: "anywhere" },
+                        { text: "Delete an app from your phone that you check compulsively. You can reinstall it tomorrow.", energy: "low", time: "1 min", location: "anywhere" },
+                        { text: "Find the closest live music tonight. Buy a ticket. Don't research the band.", energy: "high", time: "5 min", location: "anywhere" },
+                        { text: "Walk into the nearest store you've never entered. Talk to someone working there.", energy: "medium", time: "15 min", location: "outside" },
+                        { text: "Start learning something you gave up on. Spend exactly 10 minutes on it. No more, no less.", energy: "medium", time: "10 min", location: "anywhere" },
+                        { text: "Find three things in your place that you haven't touched in 6 months. Throw them away or give them away today.", energy: "low", time: "10 min", location: "home" },
+                        { text: "Send a voice message instead of a text to someone. Say something you wouldn't type.", energy: "low", time: "2 min", location: "anywhere" },
+                        { text: "Look up the nearest museum or gallery. Go there within the next 48 hours. Put it in your calendar now.", energy: "low", time: "2 min", location: "anywhere" },
+                        { text: "Choose a random page from a random book. Read it three times. Find one sentence that matters.", energy: "low", time: "5 min", location: "anywhere" },
+                        { text: "Take a photo of something ugly. Make it beautiful through framing alone.", energy: "low", time: "5 min", location: "anywhere" },
+                        { text: "Write yourself an email to be delivered in exactly one year. Be honest about what you want to change.", energy: "medium", time: "10 min", location: "anywhere" }
+                    ],
+                    explorations: [
+                        { place: "That bookstore you always pass", task: "Ask for a recommendation. Buy it without reading the back." },
+                        { place: "The dive bar that looks sketchy", task: "Order their specialty. Talk to one person." },
+                        { place: "The ethnic grocery store", task: "Buy three things you can't identify. Figure them out later." },
+                        { place: "The library", task: "Go to a section you'd never visit. Check out one book." },
+                        { place: "That coffee shop that isn't Starbucks", task: "Order their weirdest drink. Sit there for 30 minutes without your phone." },
+                        { place: "The thrift store", task: "Buy something that doesn't fit your style. Wear it tomorrow." },
+                        { place: "The park you drive past", task: "Find the highest point. Sit there until you see something unexpected." },
+                        { place: "The gym you don't belong to", task: "Take a trial class in something you'd never normally do." },
+                        { place: "The restaurant with no reviews", task: "Order what the server recommends. Trust them completely." },
+                        { place: "The record store", task: "Buy something based solely on the album cover." }
+                    ],
+                    weekends: [
+                        {
+                            city: "Philadelphia",
+                            distance: "2 hours by train",
+                            vibe: "Gritty and unpretentious",
+                            perfect_for: "Getting lost in neighborhoods",
+                            do_this: [
+                                "Take the SEPTA from 30th Street to somewhere random",
+                                "Eat at Reading Terminal Market at 8am when it's empty",
+                                "Walk the entire length of South Street",
+                                "Find Jim's Steaks at 2am",
+                                "Hit up Tattooed Mom's for weird dive bar energy"
+                            ],
+                            skip: "Liberty Bell, Independence Hall tourist traps",
+                            budget: "$200-300 for a solid weekend"
+                        },
+                        {
+                            city: "Richmond",
+                            distance: "2 hours drive",
+                            vibe: "Art school kids who stayed after graduation",
+                            perfect_for: "When DC feels too polished",
+                            do_this: [
+                                "Walk Carytown end to end",
+                                "Get lost in the VMFA (it's free)",
+                                "Hit Belle Isle for sunset",
+                                "Drink at The Answer Brewpub",
+                                "Late night at Galaxy Diner"
+                            ],
+                            skip: "Confederate monuments drama",
+                            budget: "$150-250"
+                        },
+                        {
+                            city: "Baltimore",
+                            distance: "45 minutes",
+                            vibe: "Weird in the best way",
+                            perfect_for: "When you need character",
+                            do_this: [
+                                "American Visionary Art Museum (genuinely strange)",
+                                "Hampden for maximum quirk",
+                                "The Book Thing (free books, Saturdays only)",
+                                "Drink at The Horse You Came In On",
+                                "Federal Hill for the view"
+                            ],
+                            skip: "Inner Harbor unless you like tourist traps",
+                            budget: "$100-200"
+                        },
+                        {
+                            city: "Shenandoah",
+                            distance: "90 minutes",
+                            vibe: "Actual silence",
+                            perfect_for: "When humans are too much",
+                            do_this: [
+                                "Old Rag if you want to earn it",
+                                "Skyline Drive if you don't",
+                                "Dark Hollow Falls is easy and worth it",
+                                "Camp at Big Meadows",
+                                "Sunrise from Bearfence Mountain"
+                            ],
+                            skip: "Luray Caverns unless you love gift shops",
+                            budget: "$50-100 if camping"
+                        },
+                        {
+                            city: "Annapolis",
+                            distance: "45 minutes",
+                            vibe: "Boats and day drinking",
+                            perfect_for: "Pretending you have a boat",
+                            do_this: [
+                                "Pusser's Caribbean Grille for painkillers",
+                                "Walk the Naval Academy",
+                                "Ego Alley people watching",
+                                "Sunset sail if you're feeling it",
+                                "Chick & Ruth's for basic breakfast"
+                            ],
+                            skip: "Most of Main Street shops",
+                            budget: "$150-250"
+                        }
+                    ],
+                    creative: [
+                        { prompt: "Document every door you pass for one hour. Find the pattern.", type: "photo", time: "60 min" },
+                        { prompt: "Write a Yelp review of your life for the past month. Be honest about the stars.", type: "writing", time: "15 min" },
+                        { prompt: "Draw the same object 10 times, each time with one less line.", type: "drawing", time: "20 min" },
+                        { prompt: "Record 30 seconds of ambient sound from 5 different places. Layer them.", type: "audio", time: "30 min" },
+                        { prompt: "Write instructions for something impossible.", type: "writing", time: "10 min" },
+                        { prompt: "Photograph shadows that look like other things.", type: "photo", time: "20 min" },
+                        { prompt: "Create a menu for a restaurant that serves feelings instead of food.", type: "writing", time: "15 min" },
+                        { prompt: "Make something useful out of trash. Actually use it.", type: "making", time: "30 min" },
+                        { prompt: "Write tomorrow's news headline about your life. Then make it true.", type: "writing", time: "5 min" },
+                        { prompt: "Film a 60-second movie with no people in it. Make it emotional.", type: "video", time: "30 min" }
+                    ],
+                    connections: [
+                        "Text someone just their best quality. Nothing else.",
+                        "Ask someone for advice about something you already decided.",
+                        "Call a family member you actually like. No reason needed.",
+                        "Send someone a photo that reminded you of them. No explanation.",
+                        "Invite someone to something specific within 72 hours.",
+                        "Tell someone about a memory you have of them they probably forgot.",
+                        "Ask three people for the same recommendation. Compare.",
+                        "Reconnect with someone from school. Just say hi.",
+                        "Compliment a stranger on something specific and non-physical.",
+                        "Share something you're struggling with. Don't ask for help."
+                    ]
+                },
+                
+                state: {
+                    currentInterrupt: null,
+                    completedToday: [],
+                    lastInterrupt: null,
+                    nextInterruptTime: null,
+                    city: "Washington, DC",
+                    energy: "medium",
+                    frequency: 60,
+                    activeTimers: {}
+                },
+
+                log: []
+            },
+
+            init() {
+                this.loadState();
+                this.updateTime();
+                this.generateNewInterrupt();
+                this.loadCards();
+                this.startInterruptCycle();
+                
+                setInterval(() => this.updateTime(), 1000);
+                
+                // Add keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'n' && !e.metaKey) this.generateNewInterrupt();
+                    if (e.key === 'Escape') this.closeAllModals();
+                    if (e.key === 's' && e.metaKey) {
+                        e.preventDefault();
+                        this.openSettings();
+                    }
+                });
+
+                this.addToLog('System activated. Monitoring patterns.');
+            },
+
+            updateTime() {
+                const now = new Date();
+                const time = now.toLocaleTimeString('en-US', { 
+                    hour12: false, 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+                
+                document.getElementById('currentTime').textContent = `${day} ${time}`;
+                
+                // Update routine status based on time
+                const hour = now.getHours();
+                if ((hour >= 9 && hour <= 17) && now.getDay() >= 1 && now.getDay() <= 5) {
+                    document.getElementById('routineStatus').textContent = 'Work hours detected';
+                } else if (hour >= 23 || hour <= 6) {
+                    document.getElementById('routineStatus').textContent = 'Sleep schedule disrupted';
+                } else {
+                    document.getElementById('routineStatus').textContent = 'Pattern broken';
+                }
+            },
+
+            generateNewInterrupt() {
+                const interrupts = this.data.interrupts.immediate.filter(i => 
+                    !this.data.state.completedToday.includes(i.text)
+                );
+                
+                if (interrupts.length === 0) {
+                    this.data.state.completedToday = [];
+                }
+                
+                const interrupt = interrupts[Math.floor(Math.random() * interrupts.length)];
+                this.data.state.currentInterrupt = interrupt;
+                
+                document.getElementById('currentInterrupt').textContent = interrupt.text;
+                document.getElementById('energyLevel').textContent = interrupt.energy;
+                document.getElementById('timeRequired').textContent = interrupt.time;
+                document.getElementById('locationRequired').textContent = interrupt.location;
+                
+                this.addToLog(`New interrupt: ${interrupt.text.substring(0, 50)}...`);
+                this.saveState();
+            },
+
+            completeInterrupt() {
+                if (this.data.state.currentInterrupt) {
+                    this.data.state.completedToday.push(this.data.state.currentInterrupt.text);
+                    this.showNotification('Completed', 'Pattern successfully broken.');
+                    this.addToLog('Interrupt completed. Well done.');
+                    this.generateNewInterrupt();
+                }
+            },
+
+            skipWithReason() {
+                this.showNotification('Skipped', "That's fine. Here's another.");
+                this.addToLog('Interrupt skipped. Generating alternative.');
+                this.generateNewInterrupt();
+            },
+
+            snoozeInterrupt() {
+                this.showNotification('Snoozed', "I'll remind you in 30 minutes.");
+                this.addToLog('Interrupt snoozed for 30 minutes.');
+                setTimeout(() => {
+                    this.showNotification('Reminder', 'Time for your interrupt.');
+                }, 30 * 60 * 1000);
+            },
+
+            loadCards() {
+                // Exploration
+                const exploration = this.data.interrupts.explorations[
+                    Math.floor(Math.random() * this.data.interrupts.explorations.length)
+                ];
+                document.getElementById('explorationContent').textContent = exploration.task;
+                
+                // Weekend
+                const weekend = this.data.interrupts.weekends[
+                    Math.floor(Math.random() * this.data.interrupts.weekends.length)
+                ];
+                document.getElementById('weekendContent').textContent = 
+                    `${weekend.city} - ${weekend.distance}. ${weekend.vibe}.`;
+                
+                // Creative
+                const creative = this.data.interrupts.creative[
+                    Math.floor(Math.random() * this.data.interrupts.creative.length)
+                ];
+                document.getElementById('creativeContent').textContent = creative.prompt;
+                document.getElementById('creativeTime').textContent = creative.time;
+                
+                // Connection
+                const connection = this.data.interrupts.connections[
+                    Math.floor(Math.random() * this.data.interrupts.connections.length)
+                ];
+                document.getElementById('connectionContent').textContent = connection;
+            },
+
+            openExploration() {
+                const places = this.data.interrupts.explorations;
+                const selected = places.slice(0, 5);
+                
+                let html = '<p style="color: #999; margin-bottom: 20px;">Pick one. Go now or schedule for today.</p>';
+                
+                document.getElementById('nearbyPlaces').innerHTML = selected.map(p => `
+                    <li onclick="app.selectExploration('${p.place}')">
+                        <div>
+                            <div class="location-name">${p.place}</div>
+                            <div class="location-detail">${p.task}</div>
+                        </div>
+                        <span>→</span>
+                    </li>
+                `).join('');
+                
+                document.getElementById('explorationDetails').innerHTML = html;
+                document.getElementById('explorationModal').classList.add('active');
+            },
+
+            selectExploration(place) {
+                this.showNotification('Mission Accepted', `Head to ${place}. Report back.`);
+                this.addToLog(`Exploration mission: ${place}`);
+                this.closeModal('explorationModal');
+            },
+
+            openWeekendEscape() {
+                const weekend = this.data.interrupts.weekends[
+                    Math.floor(Math.random() * this.data.interrupts.weekends.length)
+                ];
+                
+                const html = `
+                    <div class="weekend-detail">
+                        <h3>${weekend.city}</h3>
+                        <p><strong>Distance:</strong> ${weekend.distance}</p>
+                        <p><strong>Vibe:</strong> ${weekend.vibe}</p>
+                        <p><strong>Perfect for:</strong> ${weekend.perfect_for}</p>
+                        <h4 style="margin-top: 20px; margin-bottom: 10px;">Do This:</h4>
+                        <ul>
+                            ${weekend.do_this.map(d => `<li>${d}</li>`).join('')}
+                        </ul>
+                        <p style="margin-top: 15px;"><strong>Skip:</strong> ${weekend.skip}</p>
+                        <p><strong>Budget:</strong> ${weekend.budget}</p>
+                    </div>
+                `;
+                
+                document.getElementById('weekendDetails').innerHTML = html;
+                document.getElementById('weekendModal').classList.add('active');
+                
+                this.data.state.currentWeekend = weekend;
+            },
+
+            generateNewDestination() {
+                this.closeModal('weekendModal');
+                setTimeout(() => this.openWeekendEscape(), 300);
+            },
+
+            bookWeekend() {
+                this.showNotification('Escape Plan', 'Book it now or it won\'t happen.');
+                this.addToLog(`Weekend escape planned: ${this.data.state.currentWeekend.city}`);
+                this.closeModal('weekendModal');
+            },
+
+            openCreativePrompt() {
+                const creative = this.data.interrupts.creative[
+                    Math.floor(Math.random() * this.data.interrupts.creative.length)
+                ];
+                
+                const html = `
+                    <div style="padding: 20px; background: #050505; border-radius: 8px; margin: 20px 0;">
+                        <p style="font-size: 1.3rem; line-height: 1.6; color: #fff;">${creative.prompt}</p>
+                        <p style="margin-top: 15px; color: #666;">Type: ${creative.type}</p>
+                        <p style="color: #666;">Duration: ${creative.time}</p>
+                    </div>
+                    <p style="color: #999;">Start the timer and create. No judgment. No sharing required.</p>
+                `;
+                
+                document.getElementById('creativeDetails').innerHTML = html;
+                document.getElementById('creativeModal').classList.add('active');
+                
+                this.data.state.currentCreative = creative;
+            },
+
+            startCreativeTimer() {
+                const duration = parseInt(this.data.state.currentCreative.time);
+                let remaining = duration * 60;
+                
+                this.data.state.activeTimers.creative = setInterval(() => {
+                    const mins = Math.floor(remaining / 60);
+                    const secs = remaining % 60;
+                    document.getElementById('creativeTimer').textContent = 
+                        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    
+                    remaining--;
+                    
+                    if (remaining < 0) {
+                        clearInterval(this.data.state.activeTimers.creative);
+                        this.showNotification('Time\'s Up', 'Creating complete. How did it feel?');
+                        document.getElementById('creativeTimer').textContent = 'Complete';
+                    }
+                }, 1000);
+                
+                this.addToLog(`Creative session started: ${this.data.state.currentCreative.prompt.substring(0, 40)}...`);
+            },
+
+            skipCreative() {
+                if (this.data.state.activeTimers.creative) {
+                    clearInterval(this.data.state.activeTimers.creative);
+                }
+                this.closeModal('creativeModal');
+                setTimeout(() => this.openCreativePrompt(), 300);
+            },
+
+            openConnection() {
+                const connection = this.data.interrupts.connections[
+                    Math.floor(Math.random() * this.data.interrupts.connections.length)
+                ];
+                
+                const html = `
+                    <div style="padding: 20px; background: #050505; border-radius: 8px; margin: 20px 0;">
+                        <p style="font-size: 1.3rem; line-height: 1.6; color: #fff;">${connection}</p>
+                    </div>
+                    <p style="color: #999;">Do it now. Don't overthink it. Short is fine.</p>
+                `;
+                
+                document.getElementById('connectionDetails').innerHTML = html;
+                document.getElementById('connectionModal').classList.add('active');
+                
+                this.data.state.currentConnection = connection;
+            },
+
+            completeConnection() {
+                this.showNotification('Connected', 'Small gestures matter.');
+                this.addToLog('Human connection completed.');
+                this.closeModal('connectionModal');
+            },
+
+            generateNewConnection() {
+                this.closeModal('connectionModal');
+                setTimeout(() => this.openConnection(), 300);
+            },
+
+            startInterruptCycle() {
+                if (this.data.state.frequency > 0) {
+                    setInterval(() => {
+                        const now = new Date();
+                        const hour = now.getHours();
+                        
+                        // Don't interrupt during sleep hours
+                        if (hour >= 7 && hour <= 23) {
+                            this.showNotification('Pattern Alert', 'Time for an interrupt. Check the main panel.');
+                            this.generateNewInterrupt();
+                        }
+                    }, this.data.state.frequency * 60 * 1000);
+                }
+            },
+
+            startExploration() {
+                this.showNotification('Mission Started', 'Document it if you want. Or don\'t.');
+                this.closeModal('explorationModal');
+            },
+
+            openSettings() {
+                document.getElementById('settingsModal').classList.add('active');
+                document.getElementById('userCity').value = this.data.state.city;
+                document.getElementById('currentEnergy').value = this.data.state.energy;
+                document.getElementById('frequency').value = this.data.state.frequency;
+            },
+
+            saveSettings() {
+                this.data.state.city = document.getElementById('userCity').value;
+                this.data.state.energy = document.getElementById('currentEnergy').value;
+                this.data.state.frequency = parseInt(document.getElementById('frequency').value);
+                
+                document.getElementById('city').textContent = this.data.state.city;
+                
+                this.saveState();
+                this.showNotification('Calibrated', 'Settings updated.');
+                this.closeModal('settingsModal');
+                
+                // Restart interrupt cycle with new frequency
+                this.startInterruptCycle();
+            },
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('active');
+            },
+
+            closeAllModals() {
+                document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+            },
+
+            showNotification(title, body) {
+                document.getElementById('notificationTitle').textContent = title;
+                document.getElementById('notificationBody').textContent = body;
+                
+                const notification = document.getElementById('notification');
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            },
+
+            addToLog(entry) {
+                const now = new Date();
+                const time = now.toLocaleTimeString('en-US', { 
+                    hour12: false, 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                this.data.log.unshift({ time, entry });
+                
+                // Keep only last 20 entries
+                if (this.data.log.length > 20) {
+                    this.data.log = this.data.log.slice(0, 20);
+                }
+                
+                this.updateLogDisplay();
+            },
+
+            updateLogDisplay() {
+                const logHtml = this.data.log.map(l => `
+                    <div class="log-entry">
+                        <span class="log-time">${l.time}</span>
+                        ${l.entry}
+                    </div>
+                `).join('');
+                
+                document.getElementById('activityLog').innerHTML = logHtml;
+            },
+
+            saveState() {
+                localStorage.setItem('interruptState', JSON.stringify(this.data.state));
+                localStorage.setItem('interruptLog', JSON.stringify(this.data.log));
+            },
+
+            loadState() {
+                const savedState = localStorage.getItem('interruptState');
+                const savedLog = localStorage.getItem('interruptLog');
+                
+                if (savedState) {
+                    this.data.state = JSON.parse(savedState);
+                }
+                
+                if (savedLog) {
+                    this.data.log = JSON.parse(savedLog);
+                    this.updateLogDisplay();
+                }
+            }
+        };
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+            
+            // Add click handler for settings
+            document.querySelector('.header').addEventListener('dblclick', () => {
+                app.openSettings();
+            });
+        });
+
+        // Prevent tab close if timer is active
+        window.addEventListener('beforeunload', (e) => {
+            if (Object.keys(app.data.state.activeTimers).length > 0) {
+                e.preventDefault();
+                e.returnValue = 'Timer is still running. Are you sure?';
+            }
+        });
+    </script>
+</body>
+</html>
